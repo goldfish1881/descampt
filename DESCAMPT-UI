@@ -1,0 +1,126 @@
+import React from "react";
+import {connect} from "react-redux";
+import {AddToCartActionCreators} from "../redux/actions";
+import {getBasket, isAddedToCart, getError, getMaxLimit} from "../redux/selectors";
+import {bindActionCreators} from "redux";
+import {IAddToCartState} from "../redux/reducers";
+import i18next from "i18next";
+
+import "./addToCart.scss";
+import {STORAGE_BASKET_INDEX} from "../../../utils/constants/variables";
+
+interface Details {
+quantity?: any,
+maxQuantity?: any,
+sizes?: string,
+productId?: any,
+price?: any,
+photo?: string,
+canonicallUrl?: string,
+name?: string,
+}
+
+interface Props extends IAddToCartState {
+//dispatch: (props: any) => any;
+buttonText?: string,
+data?: any,//Details[]
+handleAddedToCard?: any
+}
+
+interface State {
+visible: boolean,
+messages: string[],
+invalid: boolean
+}
+
+class AddToCart extends React.Component<typeof AddToCartActionCreators> {
+
+state: State = {
+visible: false,
+messages: [],
+invalid: false
+};
+
+componentWillReceiveProps(nextProps) {
+if (!this.props.isComplect && (nextProps.addedToCart || nextProps.maxLimit)) {
+let messages: string[] = [], invalid = false;
+if (nextProps.addedToCart) {
+messages.push(i18next.t("addToCart.1"));
+invalid = false;
+} else if (nextProps.maxLimit) {
+messages.push(i18next.t("addToCart.2"));
+invalid = true;
+}
+this.setState({invalid, messages})
+}
+
+const nextData = Object.keys(nextProps.data);
+const data = Object.keys(this.props.data)
+if(nextData && data && nextData.length && data.length && nextData[0] !== data[0]){
+this.setState({visible: false})
+}
+}
+
+handleChange = (e) => {
+};
+
+handleAddToCart = () => {
+let {data, isComplect = false} = this.props;
+let messages: string[] = [], invalid = false;
+for (let productId of Object.keys(data)) {
+if (!isComplect) {
+if (data[productId].quantity === 0 || data[productId].quantity === "0") {
+messages.push(i18next.t("addToCart.3"));
+invalid = true;
+}
+if (!Object.entries(data[productId].size).length) {
+messages.push(i18next.t("addToCart.4"));
+invalid = true;
+}
+}
+if (!invalid) {
+data[productId].size.quantity = parseInt(data[productId].quantity);
+delete data[productId].quantity;
+if (data[productId].size.quantity > 0) {
+this.props.addtocartStart(STORAGE_BASKET_INDEX, productId, {...data[productId]})
+}
+}
+}
+
+this.setState({invalid, messages, visible: true});
+if (this.props.handleAddedToCard) {
+this.props.handleAddedToCard();
+}
+
+};
+
+render(): React.ReactNode {
+const {buttonText} = this.props;
+const {visible, invalid, messages} = this.state;
+
+return (
+<div className="addtocart">
+<button className={`product-sell button-style ${this.props.isEnable ? "" : "disable"}`}
+disabled={!this.props.isEnable} onClick={this.handleAddToCart}><span>{buttonText}</span>
+</button>
+{
+visible && messages.length ? messages.map((item, i) => <div
+className={`message ${invalid ? "error" : "success"}`} key={i}>{item}</div>) : ""
+
+}
+</div>
+)
+}
+}
+
+const mapStateToProps = (state: any): Props => ({
+basket: getBasket(state),
+addedToCart: isAddedToCart(state),
+error: getError(state),
+maxLimit: getMaxLimit(state)
+});
+
+const mapDispatchToProps = (dispatch): typeof AddToCartActionCreators => {
+return bindActionCreators(AddToCartActionCreators, dispatch)
+};
+export default connect(mapStateToProps, mapDispatchToProps)(AddToCart);
